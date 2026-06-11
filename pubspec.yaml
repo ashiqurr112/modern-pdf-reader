@@ -41,8 +41,7 @@ dependencies:
   shared_preferences: ^2.5.5
   equatable: ^2.0.8
   path: ^1.9.1
-  flutter_pdfview: ^1.4.4
-
+  pdfrx: ^2.2.24
 dev_dependencies:
   flutter_test:
     sdk: flutter

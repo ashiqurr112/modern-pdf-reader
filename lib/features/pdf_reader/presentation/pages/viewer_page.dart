@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import 'package:flutter_pdfview/flutter_pdfview.dart';
+import 'package:pdfrx/pdfrx.dart';
 
 class ViewerPage extends StatefulWidget {
   final File pdfFile;
@@ -13,64 +13,111 @@ class ViewerPage extends StatefulWidget {
 }
 
 class _ViewerPageState extends State<ViewerPage> {
-  int? pages = 0;
-  int? currentPage = 0;
-  bool isReady = false;
-  String errorMessage = '';
+  bool _isInit = false;
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+  late final PdfTextSearcher _textSearcher;
+  final PdfViewerController _pdfViewerController = PdfViewerController();
+
+  @override
+  void initState() {
+    super.initState();
+    _textSearcher = PdfTextSearcher(_pdfViewerController)..addListener(_update);
+    
+    // Delay initialization to allow page route animation to finish smoothly
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(() {
+          _isInit = true;
+        });
+      }
+    });
+  }
+
+  void _update() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _textSearcher.removeListener(_update);
+    _textSearcher.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.pdfName, style: const TextStyle(fontSize: 16)),
-      ),
-      body: Stack(
-        children: <Widget>[
-          PDFView(
-            filePath: widget.pdfFile.path,
-            enableSwipe: true,
-            swipeHorizontal: false,
-            autoSpacing: true,
-            pageFling: true,
-            pageSnap: true,
-            defaultPage: currentPage!,
-            fitPolicy: FitPolicy.BOTH,
-            preventLinkNavigation: false,
-            onRender: (renderPages) {
-              setState(() {
-                pages = renderPages;
-                isReady = true;
-              });
-            },
-            onError: (error) {
-              setState(() {
-                errorMessage = error.toString();
-              });
-            },
-            onPageError: (page, error) {
-              setState(() {
-                errorMessage = '$page: ${error.toString()}';
-              });
-            },
-            onPageChanged: (int? page, int? total) {
-              setState(() {
-                currentPage = page;
-              });
-            },
-          ),
-          errorMessage.isEmpty
-              ? !isReady
-                  ? const Center(child: CircularProgressIndicator())
-                  : const SizedBox.shrink()
-              : Center(child: Text(errorMessage)),
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'Search...',
+                  border: InputBorder.none,
+                ),
+                textInputAction: TextInputAction.search,
+                onSubmitted: (value) {
+                  if (value.isNotEmpty) {
+                    _textSearcher.startTextSearch(value, caseInsensitive: true);
+                  }
+                },
+              )
+            : Text(widget.pdfName, style: const TextStyle(fontSize: 16)),
+        actions: [
+          if (_isSearching) ...[
+            if (_textSearcher.hasMatches)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Text(
+                    '${(_textSearcher.currentIndex ?? 0) + 1}/${_textSearcher.matches.length}',
+                  ),
+                ),
+              ),
+            IconButton(
+              icon: const Icon(Icons.arrow_upward),
+              onPressed: _textSearcher.hasMatches ? () => _textSearcher.goToPrevMatch() : null,
+            ),
+            IconButton(
+              icon: const Icon(Icons.arrow_downward),
+              onPressed: _textSearcher.hasMatches ? () => _textSearcher.goToNextMatch() : null,
+            ),
+            IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () {
+                setState(() {
+                  _isSearching = false;
+                  _searchController.clear();
+                  _textSearcher.resetTextSearch();
+                });
+              },
+            ),
+          ] else ...[
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: () {
+                setState(() {
+                  _isSearching = true;
+                });
+              },
+            ),
+          ],
         ],
       ),
-      floatingActionButton: isReady 
-          ? FloatingActionButton.extended(
-              onPressed: () {},
-              label: Text('${(currentPage ?? 0) + 1} / $pages'),
-            )
-          : null,
+      body: !_isInit
+          ? const Center(child: CircularProgressIndicator())
+          : PdfViewer.file(
+              widget.pdfFile.path,
+              controller: _pdfViewerController,
+              params: PdfViewerParams(
+                pagePaintCallbacks: [
+                  _textSearcher.pageTextMatchPaintCallback
+                ],
+              ),
+            ),
     );
   }
 }
