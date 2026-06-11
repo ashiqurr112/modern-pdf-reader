@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import 'package:pdfrx/pdfrx.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 class ViewerPage extends StatefulWidget {
   final File pdfFile;
@@ -13,36 +13,23 @@ class ViewerPage extends StatefulWidget {
 }
 
 class _ViewerPageState extends State<ViewerPage> {
-  bool _isInit = false;
+  final GlobalKey<SfPdfViewerState> _pdfViewerKey = GlobalKey();
+  late PdfViewerController _pdfViewerController;
+  PdfTextSearchResult _searchResult = PdfTextSearchResult();
+  
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
-  late final PdfTextSearcher _textSearcher;
-  final PdfViewerController _pdfViewerController = PdfViewerController();
 
   @override
   void initState() {
     super.initState();
-    _textSearcher = PdfTextSearcher(_pdfViewerController)..addListener(_update);
-    
-    // Delay initialization to allow page route animation to finish smoothly
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted) {
-        setState(() {
-          _isInit = true;
-        });
-      }
-    });
+    _pdfViewerController = PdfViewerController();
   }
-
-  void _update() {
-    if (mounted) setState(() {});
-  }
-
+  
   @override
   void dispose() {
     _searchController.dispose();
-    _textSearcher.removeListener(_update);
-    _textSearcher.dispose();
+    _pdfViewerController.dispose();
     super.dispose();
   }
 
@@ -61,29 +48,36 @@ class _ViewerPageState extends State<ViewerPage> {
                 textInputAction: TextInputAction.search,
                 onSubmitted: (value) {
                   if (value.isNotEmpty) {
-                    _textSearcher.startTextSearch(value, caseInsensitive: true);
+                    _searchResult = _pdfViewerController.searchText(value);
+                    setState(() {});
                   }
                 },
               )
             : Text(widget.pdfName, style: const TextStyle(fontSize: 16)),
         actions: [
           if (_isSearching) ...[
-            if (_textSearcher.hasMatches)
+            if (_searchResult.hasResult)
               Center(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
                   child: Text(
-                    '${(_textSearcher.currentIndex ?? 0) + 1}/${_textSearcher.matches.length}',
+                    '${_searchResult.currentInstanceIndex}/${_searchResult.totalInstanceCount}',
                   ),
                 ),
               ),
             IconButton(
               icon: const Icon(Icons.arrow_upward),
-              onPressed: _textSearcher.hasMatches ? () => _textSearcher.goToPrevMatch() : null,
+              onPressed: _searchResult.hasResult ? () {
+                _searchResult.previousInstance();
+                setState(() {});
+              } : null,
             ),
             IconButton(
               icon: const Icon(Icons.arrow_downward),
-              onPressed: _textSearcher.hasMatches ? () => _textSearcher.goToNextMatch() : null,
+              onPressed: _searchResult.hasResult ? () {
+                _searchResult.nextInstance();
+                setState(() {});
+              } : null,
             ),
             IconButton(
               icon: const Icon(Icons.close),
@@ -91,7 +85,7 @@ class _ViewerPageState extends State<ViewerPage> {
                 setState(() {
                   _isSearching = false;
                   _searchController.clear();
-                  _textSearcher.resetTextSearch();
+                  _searchResult.clear();
                 });
               },
             ),
@@ -104,20 +98,30 @@ class _ViewerPageState extends State<ViewerPage> {
                 });
               },
             ),
+            IconButton(
+              icon: const Icon(Icons.zoom_in),
+              onPressed: () {
+                _pdfViewerController.zoomLevel = _pdfViewerController.zoomLevel + 0.5;
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.zoom_out),
+              onPressed: () {
+                final newZoom = _pdfViewerController.zoomLevel - 0.5;
+                _pdfViewerController.zoomLevel = newZoom < 1.0 ? 1.0 : newZoom;
+              },
+            ),
           ],
         ],
       ),
-      body: !_isInit
-          ? const Center(child: CircularProgressIndicator())
-          : PdfViewer.file(
-              widget.pdfFile.path,
-              controller: _pdfViewerController,
-              params: PdfViewerParams(
-                pagePaintCallbacks: [
-                  _textSearcher.pageTextMatchPaintCallback
-                ],
-              ),
-            ),
+      body: SfPdfViewer.file(
+        widget.pdfFile,
+        key: _pdfViewerKey,
+        controller: _pdfViewerController,
+        canShowScrollHead: true,
+        canShowScrollStatus: true,
+        pageLayoutMode: PdfPageLayoutMode.continuous,
+      ),
     );
   }
 }

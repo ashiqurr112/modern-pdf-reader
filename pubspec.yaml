@@ -41,7 +41,7 @@ dependencies:
   shared_preferences: ^2.5.5
   equatable: ^2.0.8
   path: ^1.9.1
-  pdfrx: ^2.2.24
+  syncfusion_flutter_pdfviewer: ^33.2.12
 dev_dependencies:
   flutter_test:
     sdk: flutter
