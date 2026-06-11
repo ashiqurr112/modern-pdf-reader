@@ -2,39 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:io';
 
-import '../../../../core/di/service_locator.dart';
-import '../cubit/pdf_scanner_cubit.dart';
-import '../cubit/pdf_scanner_state.dart';
-import '../cubit/theme_cubit.dart';
-import 'viewer_page.dart';
+import '../../../../../core/utils/formatters.dart';
+import '../../cubit/pdf_scanner_cubit.dart';
+import '../../cubit/pdf_scanner_state.dart';
+import '../../cubit/recent_pdfs_cubit.dart';
+import '../viewer_page.dart';
 
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => sl<PdfScannerCubit>()..scanFiles(),
-      child: const HomePageView(),
-    );
-  }
-}
-
-class HomePageView extends StatefulWidget {
-  const HomePageView({super.key});
+class DocumentsTab extends StatefulWidget {
+  const DocumentsTab({super.key});
 
   @override
-  State<HomePageView> createState() => _HomePageViewState();
+  State<DocumentsTab> createState() => _DocumentsTabState();
 }
 
-class _HomePageViewState extends State<HomePageView> {
+class _DocumentsTabState extends State<DocumentsTab> {
   final TextEditingController _searchController = TextEditingController();
-
-  String _formatSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
 
   @override
   void dispose() {
@@ -44,21 +26,9 @@ class _HomePageViewState extends State<HomePageView> {
 
   @override
   Widget build(BuildContext context) {
-    final themeCubit = context.read<ThemeCubit>();
-    
     return Scaffold(
       appBar: AppBar(
-        title: const Text('PDF Reader', style: TextStyle(fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(
-            icon: Icon(
-              Theme.of(context).brightness == Brightness.dark
-                  ? Icons.light_mode
-                  : Icons.dark_mode,
-            ),
-            onPressed: () => themeCubit.toggleTheme(),
-          ),
-        ],
+        title: const Text('All Documents', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
       body: Column(
         children: [
@@ -137,10 +107,11 @@ class _HomePageViewState extends State<HomePageView> {
                               style: const TextStyle(fontWeight: FontWeight.w600),
                             ),
                             subtitle: Text(
-                              '${_formatSize(pdf.size)} • ${pdf.lastModified.toString().split(' ')[0]}',
+                              '${Formatters.formatSize(pdf.size)} • ${pdf.lastModified.toString().split(' ')[0]}',
                               style: const TextStyle(fontSize: 12),
                             ),
                             onTap: () {
+                              context.read<RecentPdfsCubit>().addFileToRecents(pdf.path);
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(

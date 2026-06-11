@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/di/service_locator.dart';
 import 'core/theme/app_theme.dart';
 import 'features/pdf_reader/presentation/cubit/theme_cubit.dart';
-import 'features/pdf_reader/presentation/pages/home_page.dart';
+import 'features/pdf_reader/presentation/pages/dashboard_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,7 +26,7 @@ class MyApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: themeMode,
-            home: const HomePage(),
+            home: const DashboardPage(),
             debugShowCheckedModeBanner: false,
           );
         },

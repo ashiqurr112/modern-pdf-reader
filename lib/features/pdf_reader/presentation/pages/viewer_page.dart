@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import 'package:flutter_pdfview/flutter_pdfview.dart';
 
 class ViewerPage extends StatefulWidget {
   final File pdfFile;
@@ -13,48 +13,64 @@ class ViewerPage extends StatefulWidget {
 }
 
 class _ViewerPageState extends State<ViewerPage> {
-  final GlobalKey<SfPdfViewerState> _pdfViewerKey = GlobalKey();
-  late PdfViewerController _pdfViewerController;
-
-  @override
-  void initState() {
-    super.initState();
-    _pdfViewerController = PdfViewerController();
-  }
+  int? pages = 0;
+  int? currentPage = 0;
+  bool isReady = false;
+  String errorMessage = '';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.pdfName, style: const TextStyle(fontSize: 16)),
-        actions: <Widget>[
-          IconButton(
-            icon: const Icon(Icons.bookmark),
-            onPressed: () {
-              _pdfViewerKey.currentState?.openBookmarkView();
+      ),
+      body: Stack(
+        children: <Widget>[
+          PDFView(
+            filePath: widget.pdfFile.path,
+            enableSwipe: true,
+            swipeHorizontal: false,
+            autoSpacing: true,
+            pageFling: true,
+            pageSnap: true,
+            defaultPage: currentPage!,
+            fitPolicy: FitPolicy.BOTH,
+            preventLinkNavigation: false,
+            onRender: (renderPages) {
+              setState(() {
+                pages = renderPages;
+                isReady = true;
+              });
+            },
+            onError: (error) {
+              setState(() {
+                errorMessage = error.toString();
+              });
+            },
+            onPageError: (page, error) {
+              setState(() {
+                errorMessage = '$page: ${error.toString()}';
+              });
+            },
+            onPageChanged: (int? page, int? total) {
+              setState(() {
+                currentPage = page;
+              });
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.zoom_in),
-            onPressed: () {
-              _pdfViewerController.zoomLevel = _pdfViewerController.zoomLevel + 0.5;
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.zoom_out),
-            onPressed: () {
-              _pdfViewerController.zoomLevel = _pdfViewerController.zoomLevel - 0.5;
-            },
-          ),
+          errorMessage.isEmpty
+              ? !isReady
+                  ? const Center(child: CircularProgressIndicator())
+                  : const SizedBox.shrink()
+              : Center(child: Text(errorMessage)),
         ],
       ),
-      body: SfPdfViewer.file(
-        widget.pdfFile,
-        key: _pdfViewerKey,
-        controller: _pdfViewerController,
-        canShowScrollHead: true,
-        canShowScrollStatus: true,
-      ),
+      floatingActionButton: isReady 
+          ? FloatingActionButton.extended(
+              onPressed: () {},
+              label: Text('${(currentPage ?? 0) + 1} / $pages'),
+            )
+          : null,
     );
   }
 }
