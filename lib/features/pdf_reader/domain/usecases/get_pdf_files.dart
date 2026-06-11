@@ -1,0 +1,15 @@
+import '../../../../core/errors/failures.dart';
+import '../../../../core/usecases/usecase.dart';
+import '../entities/pdf_file.dart';
+import '../repositories/pdf_repository.dart';
+
+class GetPdfFiles implements UseCase<(Failure?, List<PdfFile>?), NoParams> {
+  final PdfRepository repository;
+
+  GetPdfFiles(this.repository);
+
+  @override
+  Future<(Failure?, List<PdfFile>?)> call(NoParams params) async {
+    return await repository.getPdfFiles();
+  }
+}
